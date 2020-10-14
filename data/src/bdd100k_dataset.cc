@@ -88,6 +88,16 @@ std::string Bdd100kDataset::keyToPrev(std::string key) const
     return result.str();
 }
 
+static cv::Mat fixAspectRatio(cv::Mat src, int value)
+{
+    cv::Mat dst;
+    int w = src.cols;
+    int h = src.rows;
+    int r = 2 * h - w;
+    cv::copyMakeBorder(src, dst, 0, 0, 0, r, cv::BORDER_CONSTANT, value);
+    return dst;
+}
+
 std::shared_ptr<DatasetEntry> Bdd100kDataset::get(std::size_t i)
 {
     CHECK(i < m_keys.size(), "Index out of range");
@@ -96,10 +106,12 @@ std::shared_ptr<DatasetEntry> Bdd100kDataset::get(std::size_t i)
     auto [keyPrefix, seqNo] = splitKey(key);
     auto leftImgPath = m_leftImgPath / bfs::path(keyPrefix) / bfs::path(key + std::string(".jpg"));
     cv::Mat leftImg = cv::imread(leftImgPath.string());
+    leftImg = fixAspectRatio(leftImg, 128);
     CHECK(leftImg.data, "Failed to read image " + leftImgPath.string());
     result->input.left = toFloatMat(leftImg);
     auto prevLeftImgPath = m_leftImgPath / bfs::path(keyPrefix) / bfs::path(keyToPrev(key) + std::string(".jpg"));
     cv::Mat prevLeftImg = cv::imread(prevLeftImgPath.string());
+    prevLeftImg = fixAspectRatio(prevLeftImg, 128);
     CHECK(prevLeftImg.data, "Failed to read image " + prevLeftImgPath.string());
     result->input.prevLeft = toFloatMat(prevLeftImg);
     auto jsonPath = m_groundTruthPath / bfs::path(keyPrefix + std::string(".json"));
@@ -112,7 +124,8 @@ std::shared_ptr<DatasetEntry> Bdd100kDataset::get(std::size_t i)
     result->metadata.originalWidth = result->input.left.cols;
     result->metadata.originalHeight = result->input.left.rows;
     result->metadata.canFlip = true;
-    result->metadata.horizontalFov = 50.0; // This is just an estimate...
+//    result->metadata.horizontalFov = 50.0; // This is just an estimate...
+    result->metadata.horizontalFov = 56.25; // Because of aspect ratio fixup
     result->metadata.key = key;
     return result;
 }

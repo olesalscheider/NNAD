@@ -137,8 +137,8 @@ step = global_step.numpy()
 summary_step = step + 1
 while step < max_train_steps:
     # Enable trace
-    if step == summary_step:
-        tf.summary.trace_on(graph=True, profiler=True)
+    #if step == summary_step:
+    #    tf.summary.trace_on(graph=True, profiler=True)
 
     # Run training step
     with train_summary_writer.as_default():
@@ -161,12 +161,12 @@ while step < max_train_steps:
                sec_per_batch))
 
     # Save trace
-    if step == summary_step:
-        #if step > 100:
-            #checkpoint_status.assert_existing_objects_matched().assert_consumed()
-        with train_summary_writer.as_default():
-            tf.summary.trace_export("Trace %s" % datetime.now(), step,
-                                    profiler_outdir=os.path.join(config['state_dir'], 'summaries'))
+    #if step == summary_step:
+    #    #if step > 100:
+    #        #checkpoint_status.assert_existing_objects_matched().assert_consumed()
+    #    with train_summary_writer.as_default():
+    #        tf.summary.trace_export("Trace %s" % datetime.now(), step,
+    #                                profiler_outdir=os.path.join(config['state_dir'], 'summaries'))
 
     # Save checkpoints
     if step > 0 and (step % 1000 == 0 or (step + 1) == max_train_steps):

@@ -25,7 +25,8 @@
 
 Bdd100kSegDataset::Bdd100kSegDataset(bfs::path basePath, Mode mode)
 {
-    m_fov = 50.0;
+    //m_fov = 50.0;
+    m_fov = 56.25; // Because of aspect ratio fixup
 
     switch (mode) {
     case Mode::Train:
@@ -59,6 +60,16 @@ Bdd100kSegDataset::Bdd100kSegDataset(bfs::path basePath, Mode mode)
     std::sort(m_keys.begin(), m_keys.end());
 }
 
+static cv::Mat fixAspectRatio(cv::Mat src, int value)
+{
+    cv::Mat dst;
+    int w = src.cols;
+    int h = src.rows;
+    int r = 2 * h - w;
+    cv::copyMakeBorder(src, dst, 0, 0, 0, r, cv::BORDER_CONSTANT, value);
+    return dst;
+}
+
 std::shared_ptr<DatasetEntry> Bdd100kSegDataset::get(std::size_t i)
 {
     CHECK(i < m_keys.size(), "Index out of range");
@@ -67,11 +78,13 @@ std::shared_ptr<DatasetEntry> Bdd100kSegDataset::get(std::size_t i)
     auto leftImgPath = m_leftImgPath / bfs::path(key + m_leftImgSubstring);
     cv::Mat leftImg = cv::imread(leftImgPath.string());
     CHECK(leftImg.data, "Failed to read image " + leftImgPath.string());
+    leftImg = fixAspectRatio(leftImg, 128);
     result->input.left = toFloatMat(leftImg);
     result->input.prevLeft = result->input.left;
     if (!m_groundTruthSubstring.empty()) {
         auto labelImgPath = m_groundTruthPath / bfs::path(key + m_groundTruthSubstring);
         cv::Mat labelImg = cv::imread(labelImgPath.string(), cv::IMREAD_ANYDEPTH | cv::IMREAD_GRAYSCALE);
+        labelImg = fixAspectRatio(labelImg, 255);
         labelImg.convertTo(labelImg, CV_32S);
         CHECK(labelImg.data, "Failed to read image " + labelImgPath.string());
         result->gt.pixelwiseLabels = labelImg;
