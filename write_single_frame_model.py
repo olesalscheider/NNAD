@@ -34,6 +34,8 @@ from helpers.helpers import *
 # Argument handling
 config, config_path = get_config()
 
+#tf.keras.mixed_precision.experimental.set_policy('float32')
+
 # Define the inference model
 class Infer(tf.Module):
     def __init__(self, config):
@@ -58,7 +60,7 @@ class Infer(tf.Module):
                            int(config['eval_image_height'] / 2**(i+2)),
                            int(config['eval_image_width'] / 2**(i+2)),
                            BIFPN_NUM_FEATURES],
-            tf.float32, 'current_features_{}'.format(i)) for i in range(6)]])
+                          'float32', 'current_features_{}'.format(i)) for i in range(6)]])
     def inferHeads(self, current_feature_map):
         return_vals = {}
 

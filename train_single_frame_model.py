@@ -80,28 +80,31 @@ def single_train_step():
     images, ground_truth, metadata = ds.get_batched_data(config['single_frame']['batch_size_per_gpu'])
 
     with tf.GradientTape(persistent=True) as tape:
-        feature_map = backbone(images['left'], True)
-        feature_map = fpn1(feature_map, True)
-        feature_map = fpn2(feature_map, True)
-        results = heads(feature_map, True)
+        with tf.device('/gpu:0'):
+            feature_map = backbone(images['left'], True)
+            feature_map = fpn1(feature_map, True)
 
-        losses = []
-        if config['train_labels']:
-            losses += [label_loss([results, ground_truth], tf.cast(global_step, tf.int64))]
-        if config['train_boundingboxes']:
-            losses += box_loss([results, ground_truth], tf.cast(global_step, tf.int64))
-            losses += [embedding_loss([results, ground_truth], tf.cast(global_step, tf.int64))]
+        with tf.device('/gpu:1'):
+            feature_map = fpn2(feature_map, True)
+            results = heads(feature_map, True)
 
-        ## Sum up all losses
-        total_loss = tf.add_n(losses)
-        tf.summary.scalar('summed_losses', total_loss, tf.cast(global_step, tf.int64))
+            losses = []
+            if config['train_labels']:
+                losses += [label_loss([results, ground_truth], tf.cast(global_step, tf.int64))]
+            if config['train_boundingboxes']:
+                losses += box_loss([results, ground_truth], tf.cast(global_step, tf.int64))
+                losses += [embedding_loss([results, ground_truth], tf.cast(global_step, tf.int64))]
 
-        ## Regularization terms
-        vs = backbone.trainable_variables + fpn1.trainable_variables + fpn2.trainable_variables + heads.trainable_variables
-        if config['train_labels']:
-            vs += label_loss.trainable_variables
-        if config['train_boundingboxes']:
-            vs += box_loss.trainable_variables + embedding_loss.trainable_variables
+            ## Sum up all losses
+            total_loss = tf.add_n(losses)
+            tf.summary.scalar('summed_losses', total_loss, tf.cast(global_step, tf.int64))
+
+            ## Regularization terms
+            vs = backbone.trainable_variables + fpn1.trainable_variables + fpn2.trainable_variables + heads.trainable_variables
+            if config['train_labels']:
+                vs += label_loss.trainable_variables
+            if config['train_boundingboxes']:
+                vs += box_loss.trainable_variables + embedding_loss.trainable_variables
 
     gs = tape.gradient(total_loss, vs)
     opt.apply_gradients(zip(gs, vs))
@@ -111,19 +114,22 @@ def single_train_step():
 def single_val_step():
     images, ground_truth, metadata = val_ds.get_batched_data(config['single_frame']['batch_size_per_gpu'])
 
-    feature_map = backbone(images['left'], False)
-    feature_map = fpn1(feature_map, False)
-    feature_map = fpn2(feature_map, False)
-    results = heads(feature_map, False)
+    with tf.device('/gpu:0'):
+        feature_map = backbone(images['left'], False)
+        feature_map = fpn1(feature_map, False)
 
-    losses = []
-    if config['train_labels']:
-        losses += [label_loss_val([results, ground_truth], tf.cast(global_step, tf.int64))]
-    if config['train_boundingboxes']:
-        losses += box_loss_val([results, ground_truth], tf.cast(global_step, tf.int64))
-        losses += [embedding_loss_val([results, ground_truth], tf.cast(global_step, tf.int64))]
-    summed_losses = tf.add_n(losses)
-    tf.summary.scalar('summed_val_losses', summed_losses, tf.cast(global_step, tf.int64))
+    with tf.device('/gpu:1'):
+        feature_map = fpn2(feature_map, False)
+        results = heads(feature_map, False)
+
+        losses = []
+        if config['train_labels']:
+            losses += [label_loss_val([results, ground_truth], tf.cast(global_step, tf.int64))]
+        if config['train_boundingboxes']:
+            losses += box_loss_val([results, ground_truth], tf.cast(global_step, tf.int64))
+            losses += [embedding_loss_val([results, ground_truth], tf.cast(global_step, tf.int64))]
+        summed_losses = tf.add_n(losses)
+        tf.summary.scalar('summed_val_losses', summed_losses, tf.cast(global_step, tf.int64))
 
 
 # Load checkpoints

@@ -89,7 +89,7 @@ public:
             prevNum += num;
         }
 
-        BBUtils::performNMS(detectionList);
+        BBUtils::performNMS(detectionList, 0.5, 0.5);
 
         return detectionList;
     }

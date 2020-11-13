@@ -18,7 +18,6 @@
 
 import tensorflow as tf
 import collections
-from thirdparty.online_norm import *
 
 def Normalization():
     return tf.keras.layers.BatchNormalization(momentum=0.9, epsilon=0.01)
